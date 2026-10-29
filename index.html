@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Post-it Todo List</title>
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- SortableJS for Drag and Drop (Mobile & Desktop) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 20%, #fdfbf7 0%, #f4ede4 100%);
+      --text-color: #2d3748;
+      --card-shadow: 0 10px 20px rgba(0, 0, 0, 0.12), 0 4px 6px rgba(0, 0, 0, 0.08);
+      --card-shadow-hover: 0 18px 28px rgba(0, 0, 0, 0.18), 0 8px 10px rgba(0, 0, 0, 0.1);
+      --header-bg: rgba(255, 255, 255, 0.85);
+      --input-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --subtext-color: #718096;
+      --footer-bg: rgba(255, 255, 255, 0.75);
+
+      /* 포스트잇 색상 테마 (0: 노랑, 1: 분홍, 2: 초록, 3: 파랑) */
+      --postit-yellow: #fff385;
+      --postit-yellow-top: #ffea5c;
+      --postit-pink: #ffb7c5;
+      --postit-pink-top: #ffa1b2;
+      --postit-green: #bbf7d0;
+      --postit-green-top: #99f6b4;
+      --postit-blue: #bae6fd;
+      --postit-blue-top: #93c5fd;
+    }
+
+    [data-theme="dark"] {
+      --bg-gradient: radial-gradient(circle at 50% 20%, #1e2430 0%, #0f131a 100%);
+      --text-color: #f7fafc;
+      --card-shadow: 0 10px 22px rgba(0, 0, 0, 0.45);
+      --card-shadow-hover: 0 18px 30px rgba(0, 0, 0, 0.6);
+      --header-bg: rgba(26, 32, 44, 0.85);
+      --input-bg: #2d3748;
+      --border-color: #4a5568;
+      --subtext-color: #a0aec0;
+      --footer-bg: rgba(26, 32, 44, 0.75);
+
+      /* 다크모드에서도 눈이 편안하면서 생동감 있는 포스트잇 색상 */
+      --postit-yellow: #fde047;
+      --postit-yellow-top: #eab308;
+      --postit-pink: #f472b6;
+      --postit-pink-top: #ec4899;
+      --postit-green: #86efac;
+      --postit-green-top: #4ade80;
+      --postit-blue: #93c5fd;
+      --postit-blue-top: #60a5fa;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    /* 상단 헤더 & 컨트롤 */
+    header {
+      background: var(--header-bg);
+      backdrop-filter: blur(10px);
+      padding: 16px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'Gaegu', cursive;
+      font-size: 2rem;
+      font-weight: 700;
+      color: #eab308;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .header-logo span {
+      color: var(--text-color);
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    /* 테마 토글 버튼 & 설정 버튼 */
+    .icon-btn {
+      background: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      padding: 8px 14px;
+      border-radius: 9999px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+    }
+
+    /* 메인 컨테이너 */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* 중앙 메모 작성 폼 */
+    .form-container {
+      width: 100%;
+      max-width: 640px;
+      background: var(--input-bg);
+      padding: 24px;
+      border-radius: 18px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-color);
+      margin-bottom: 36px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .form-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .memo-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 14px;
+      font-size: 1.05rem;
+      font-family: inherit;
+      border: 1.5px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--input-bg);
+      color: var(--text-color);
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .memo-textarea:focus {
+      border-color: #f59e0b;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+    }
+
+    .form-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .select-styled {
+      padding: 9px 16px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      border-radius: 10px;
+      border: 1.5px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text-color);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .select-styled:focus {
+      border-color: #f59e0b;
+    }
+
+    .btn-submit {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 10px rgba(217, 119, 6, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(217, 119, 6, 0.4);
+    }
+
+    /* 필터 & 툴바 영역 */
+    .filter-section {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 2px dashed var(--border-color);
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+
+    .filter-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .count-badge {
+      background: #e2e8f0;
+      color: #334155;
+      font-size: 0.85rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    [data-theme="dark"] .count-badge {
+      background: #334155;
+      color: #f1f5f9;
+    }
+
+    .filter-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* 포스트잇 그리드: 한 행에 최대 4개 */
+    .notes-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 26px;
+      padding: 10px 0;
+    }
+
+    @media (max-width: 1200px) {
+      .notes-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 860px) {
+      .notes-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .notes-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 포스트잇 카드 디자인 및 애니메이션 */
+    @keyframes stickOn {
+      0% {
+        opacity: 0;
+        transform: scale(0.6) translateY(-40px) rotate(-8deg);
+      }
+      65% {
+        opacity: 1;
+        transform: scale(1.04) translateY(3px) rotate(2deg);
+      }
+      85% {
+        transform: scale(0.98) translateY(-1px) rotate(-1deg);
+      }
+      100% {
+        transform: scale(1) translateY(0) rotate(var(--rot, 0deg));
+      }
+    }
+
+    .postit-card {
+      position: relative;
+      min-height: 240px;
+      border-radius: 4px 4px 18px 4px;
+      padding: 20px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: #1f2937;
+      box-shadow: var(--card-shadow);
+      cursor: grab;
+      user-select: none;
+      touch-action: manipulation;
+      transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s ease;
+      animation: stickOn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .postit-card:active {
+      cursor: grabbing;
+    }
+
+    .postit-card:hover {
+      transform: translateY(-5px) scale(1.02) rotate(0deg) !important;
+      box-shadow: var(--card-shadow-hover);
+      z-index: 10;
+    }
+
+    /* 테이프/압정 느낌의 상단 장식 효과 */
+    .postit-card::before {
+      content: "";
+      position: absolute;
+      top: -9px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 70px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 2px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      backdrop-filter: blur(2px);
+      z-index: 2;
+    }
+
+    /* 우측 하단 살짝 말린 느낌 */
+    .postit-card::after {
+      content: "";
+      position: absolute;
+      bottom: 0px;
+      right: 0px;
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.1) 50%);
+      border-bottom-right-radius: 16px;
+      pointer-events: none;
+    }
+
+    /* 색상별 스타일 (0: 노랑, 1: 분홍, 2: 초록, 3: 파랑) */
+    .postit-yellow {
+      background: linear-gradient(180deg, var(--postit-yellow-top) 0%, var(--postit-yellow) 15%, var(--postit-yellow) 100%);
+    }
+    .postit-pink {
+      background: linear-gradient(180deg, var(--postit-pink-top) 0%, var(--postit-pink) 15%, var(--postit-pink) 100%);
+    }
+    .postit-green {
+      background: linear-gradient(180deg, var(--postit-green-top) 0%, var(--postit-green) 15%, var(--postit-green) 100%);
+    }
+    .postit-blue {
+      background: linear-gradient(180deg, var(--postit-blue-top) 0%, var(--postit-blue) 15%, var(--postit-blue) 100%);
+    }
+
+    /* 완료된 포스트잇 상태 */
+    .postit-card.completed {
+      opacity: 0.72;
+      filter: saturate(0.7);
+    }
+    .postit-card.completed .postit-content {
+      text-decoration: line-through;
+      color: #4b5563;
+    }
+
+    /* 카드 헤더 (카테고리 뱃지 & 액션 버튼들) */
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      border-bottom: 1px dashed rgba(0,0,0,0.12);
+      padding-bottom: 8px;
+    }
+
+    .badge-category {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.08);
+      color: #111827;
+      letter-spacing: -0.2px;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-btn {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 6px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: #374151;
+      transition: all 0.15s ease;
+    }
+
+    .card-btn:hover {
+      background: #ffffff;
+      transform: scale(1.1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .card-btn.check-btn:hover {
+      color: #15803d;
+      border-color: #22c55e;
+    }
+
+    .card-btn.edit-btn:hover {
+      color: #2563eb;
+      border-color: #3b82f6;
+    }
+
+    .card-btn.delete-btn:hover {
+      color: #dc2626;
+      border-color: #ef4444;
+    }
+
+    /* 포스트잇 본문 내용 */
+    .postit-content {
+      font-family: 'Nanum Pen Script', 'Gaegu', cursive;
+      font-size: 1.45rem;
+      line-height: 1.4;
+      flex: 1;
+      word-break: break-word;
+      white-space: pre-wrap;
+      color: #1e293b;
+      margin: 6px 0 16px;
+    }
+
+    /* 포스트잇 하단: 작성 연월일 시간 요일 */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: 0.75rem;
+      color: rgba(30, 41, 59, 0.55);
+      border-top: 1px dashed rgba(0,0,0,0.1);
+      padding-top: 8px;
+    }
+
+    .datetime-text {
+      font-size: 0.72rem;
+      line-height: 1.25;
+      font-weight: 500;
+      letter-spacing: -0.3px;
+    }
+
+    .drag-handle-hint {
+      font-size: 0.75rem;
+      opacity: 0.4;
+    }
+
+    /* 푸터 영역 */
+    footer {
+      background: var(--footer-bg);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--border-color);
+      padding: 18px 24px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--subtext-color);
+      margin-top: auto;
+    }
+
+    /* 모달 팝업 (구글 시트 연동 설정 & 메모 수정) */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: var(--input-bg);
+      color: var(--text-color);
+      width: 100%;
+      max-width: 500px;
+      padding: 26px;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      border: 1px solid var(--border-color);
+      animation: modalSlide 0.25s ease-out;
+    }
+
+    @keyframes modalSlide {
+      from { transform: translateY(20px) scale(0.96); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .modal-header h3 {
+      font-size: 1.25rem;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: var(--subtext-color);
+    }
+
+    .modal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-body label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--input-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .modal-input:focus {
+      border-color: #f59e0b;
+    }
+
+    .modal-footer {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* 토스트 알림 */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.2);
+      display: none;
+      align-items: center;
+      gap: 8px;
+      z-index: 2000;
+      animation: toastIn 0.3s ease;
+    }
+
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+      display: inline-block;
+    }
+
+    .status-dot.online {
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+    }
+
+    .status-dot.syncing {
+      background: #f59e0b;
+      animation: pulse 1s infinite alternate;
+    }
+
+    @keyframes pulse {
+      from { opacity: 0.4; }
+      to { opacity: 1; }
+    }
+
+    /* 드래그 중인 카드 스타일 */
+    .sortable-ghost {
+      opacity: 0.35;
+      transform: scale(0.95);
+    }
+    .sortable-chosen {
+      box-shadow: 0 20px 30px rgba(0,0,0,0.25) !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <header>
+    <div class="header-logo">
+      <i class="fa-solid fa-note-sticky"></i>
+      <span>Post-it Todo List</span>
+    </div>
+    <div class="header-controls">
+      <!-- 구글 시트 연동 설정 모달 열기 -->
+      <button class="icon-btn" id="btnOpenSheetModal" title="구글 시트 연동 설정">
+        <span class="status-dot" id="syncStatusDot"></span>
+        <i class="fa-solid fa-file-excel"></i>
+        <span id="sheetStatusText">시트 연동</span>
+      </button>
+
+      <!-- 테마 토글 버튼 -->
+      <button class="icon-btn" id="themeToggleBtn" title="라이트/다크 모드 전환">
+        <i class="fa-solid fa-moon" id="themeIcon"></i>
+        <span id="themeText">다크 모드</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 영역 -->
+  <main>
+    <!-- 메모 입력 폼 (가운데 배치) -->
+    <div class="form-container">
+      <div class="form-title">
+        <i class="fa-solid fa-pen-fancy" style="color: #f59e0b;"></i> 새 포스트잇 메모 남기기
+      </div>
+      <form id="memoForm">
+        <textarea 
+          id="memoInput" 
+          class="memo-textarea" 
+          placeholder="메모할 내용을 자유롭게 적어보세요... (Ctrl + Enter로 바로 등록)" 
+          required
+        ></textarea>
+        <div class="form-bottom">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="categorySelect" style="font-size: 0.9rem; font-weight: 600;">범주:</label>
+            <select id="categorySelect" class="select-styled">
+              <option value="할 일">할 일</option>
+              <option value="아이디어">아이디어</option>
+              <option value="기타" selected>기타</option>
+            </select>
+          </div>
+          <button type="submit" class="btn-submit">
+            <i class="fa-solid fa-plus"></i> 포스트잇 붙이기
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- 필터 및 제어 바 -->
+    <div class="filter-section">
+      <div class="filter-left">
+        <span>메모 목록</span>
+        <span class="count-badge" id="memoCountBadge">0개</span>
+      </div>
+      <div class="filter-right">
+        <label for="filterCategorySelect" style="font-size: 0.95rem; font-weight: 600;">
+          <i class="fa-solid fa-filter"></i> 카테고리 필터:
+        </label>
+        <select id="filterCategorySelect" class="select-styled">
+          <option value="전체">전체 보기</option>
+          <option value="할 일">할 일</option>
+          <option value="아이디어">아이디어</option>
+          <option value="기타">기타</option>
+        </select>
+        <button class="icon-btn" id="btnRefresh" title="새로고침">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 포스트잇 그리드 (한 행 최대 4개) -->
+    <div class="notes-grid" id="notesContainer">
+      <!-- 동적으로 포스트잇 카드가 삽입됩니다 -->
+    </div>
+  </main>
+
+  <!-- 푸터 -->
+  <footer>
+    <p>Copyright INU Post-it Todo List by OOO</p>
+  </footer>
+
+  <!-- 메모 편집 모달 -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-pen-to-square"></i> 메모 수정</h3>
+        <button class="close-btn" id="closeEditModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editMemoDatetime" />
+        <div>
+          <label>범주</label>
+          <select id="editCategorySelect" class="select-styled" style="width: 100%;">
+            <option value="할 일">할 일</option>
+            <option value="아이디어">아이디어</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div>
+          <label>메모 내용</label>
+          <textarea id="editMemoContent" class="memo-textarea" style="min-height: 120px;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="icon-btn" id="cancelEditBtn">취소</button>
+        <button class="btn-submit" id="saveEditBtn">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 구글 시트 연동 설정 모달 -->
+  <div class="modal-overlay" id="sheetModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sheet-plastic"></i> 구글 스프레드시트 연동 설정</h3>
+        <button class="close-btn" id="closeSheetModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--subtext-color); line-height: 1.5;">
+          배포된 <strong>Google Apps Script 웹 앱 URL</strong>을 입력하세요.<br/>
+          (연결 시트: <a href="https://docs.google.com/spreadsheets/d/1wWyD3F-JkafniQeayENJ79mlM19S1Tniv7NsVnxI2aM/edit?usp=sharing" target="_blank" style="color: #f59e0b; text-decoration: underline;">스프레드시트 열기</a>)
+        </p>
+        <div>
+          <label for="webAppUrlInput">Google Web App URL</label>
+          <input 
+            type="url" 
+            id="webAppUrlInput" 
+            class="modal-input" 
+            placeholder="https://script.google.com/macros/s/.../exec"
+          />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="icon-btn" id="btnTestSheet">동기화 테스트</button>
+        <button class="btn-submit" id="btnSaveSheetUrl">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 메시지 -->
+  <div id="toast">
+    <i class="fa-solid fa-circle-check" id="toastIcon"></i>
+    <span id="toastMessage">작업이 완료되었습니다.</span>
+  </div>
+
+  <!-- 스크립트 로직 -->
+  <script>
+    /* -------------------------------------------------------------
+     * 1. 전역 상태 및 데이터 구조
+     * 컬러 정의: 0: 노랑, 1: 분홍, 2: 초록, 3: 파랑
+     * ------------------------------------------------------------- */
+    const COLOR_CLASSES = ['postit-yellow', 'postit-pink', 'postit-green', 'postit-blue'];
+    const DAY_NAMES = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+
+    let notes = []; // [{ datetime, timestamp, category, content, color, state, order, rotation }]
+    let filterCategory = '전체';
+    let googleWebAppUrl = '';
+    let sortableInstance = null;
+
+    // .env.local 의 NEXT_PUBLIC_GOOGLE_SCRIPT_URL 로드
+    async function loadConfigEnv() {
+      try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+          const config = await res.json();
+          if (config && config.NEXT_PUBLIC_GOOGLE_SCRIPT_URL) {
+            googleWebAppUrl = config.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
+          }
+        }
+      } catch (e) {
+        console.warn('Config fetch skipped or running standalone');
+      }
+
+      // 로컬스토리지에 별도 저장된 사용자 지정 URL이 있다면 우선 적용 가능
+      const savedUrl = localStorage.getItem('postit_sheet_url');
+      if (savedUrl) {
+        googleWebAppUrl = savedUrl;
+      }
+
+      const input = document.getElementById('webAppUrlInput');
+      if (input) input.value = googleWebAppUrl;
+      updateSyncIndicator(googleWebAppUrl ? 'syncing' : 'offline');
+
+      // 시트 연동 데이터 조회
+      fetchAllNotes();
+    }
+
+    /* -------------------------------------------------------------
+     * 2. 날짜 / 시간 포맷 헬퍼 함수
+     * 요구사항: "작성한 연월일 시간 요일을 작은 글씨로 흐릿하게 표시"
+     * ------------------------------------------------------------- */
+    function formatFullDateTime(d = new Date()) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const date = String(d.getDate()).padStart(2, '0');
+      const day = DAY_NAMES[d.getDay()];
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const seconds = String(d.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${date} ${hours}:${minutes}:${seconds} (${day})`;
+    }
+
+    function getISOString(d = new Date()) {
+      return d.toISOString();
+    }
+
+    // 약간의 아날로그 느낌을 위한 무작위 회전 각도 (-2deg ~ 2deg)
+    function getRandomRotation() {
+      return (Math.random() * 4 - 2).toFixed(1) + 'deg';
+    }
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMsg.textContent = msg;
+      toastIcon.className = isError ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check';
+      toast.style.background = isError ? '#dc2626' : '#1e293b';
+      toast.style.display = 'flex';
+
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 2500);
+    }
+
+    /* -------------------------------------------------------------
+     * 3. 로컬 스토리지 & 구글 시트 API 통신
+     * ------------------------------------------------------------- */
+    function saveLocalNotes() {
+      localStorage.setItem('postit_notes', JSON.stringify(notes));
+    }
+
+    function loadLocalNotes() {
+      const saved = localStorage.getItem('postit_notes');
+      if (saved) {
+        try {
+          notes = JSON.parse(saved);
+        } catch (e) {
+          notes = [];
+        }
+      }
+    }
+
+    function updateSyncIndicator(state) {
+      const dot = document.getElementById('syncStatusDot');
+      const txt = document.getElementById('sheetStatusText');
+      if (state === 'online') {
+        dot.className = 'status-dot online';
+        txt.textContent = '시트 연결됨';
+      } else if (state === 'syncing') {
+        dot.className = 'status-dot syncing';
+        txt.textContent = '동기화 중...';
+      } else {
+        dot.className = 'status-dot';
+        txt.textContent = googleWebAppUrl ? '연결 대기' : '로컬 모드';
+      }
+    }
+
+    // Google Sheets API 호출 (GET / POST)
+    async function syncWithGoogleSheets(action, payload = {}) {
+      if (!googleWebAppUrl) return null;
+
+      updateSyncIndicator('syncing');
+      try {
+        if (action === 'read') {
+          const resp = await fetch(`${googleWebAppUrl}?action=read`);
+          const data = await resp.json();
+          updateSyncIndicator('online');
+          return data;
+        } else {
+          // CORS 이슈 방지를 위해 text/plain 방식 전송 지원
+          const resp = await fetch(googleWebAppUrl, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify({ action, ...payload })
+          });
+          const data = await resp.json();
+          updateSyncIndicator('online');
+          return data;
+        }
+      } catch (err) {
+        console.warn('Google Sheets sync error:', err);
+        updateSyncIndicator('offline');
+        return null;
+      }
+    }
+
+    async function fetchAllNotes() {
+      if (googleWebAppUrl) {
+        const res = await syncWithGoogleSheets('read');
+        if (res && res.success && Array.isArray(res.notes)) {
+          notes = res.notes.map((n, idx) => ({
+            timestamp: n.timestamp || formatFullDateTime(),
+            datetime: n.datetime || formatFullDateTime(),
+            category: n.category || '기타',
+            content: n.content || '',
+            color: n.color !== undefined ? Number(n.color) : (idx % 4),
+            state: n.state || '진행중',
+            order: Number(n.order) || idx,
+            rotation: getRandomRotation()
+          }));
+          saveLocalNotes();
+          renderNotes();
+          return;
+        }
+      }
+      // 로컬 스토리지 백업 데이터 로드
+      loadLocalNotes();
+      renderNotes();
+    }
+
+    /* -------------------------------------------------------------
+     * 4. 렌더링 함수
+     * ------------------------------------------------------------- */
+    function renderNotes() {
+      const container = document.getElementById('notesContainer');
+      container.innerHTML = '';
+
+      // 필터링 적용
+      const filteredNotes = notes.filter(n => {
+        if (filterCategory === '전체') return true;
+        return n.category === filterCategory;
+      });
+
+      document.getElementById('memoCountBadge').textContent = `${filteredNotes.length}개`;
+
+      if (filteredNotes.length === 0) {
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; color: var(--subtext-color);">
+            <i class="fa-regular fa-note-sticky" style="font-size: 3rem; margin-bottom: 12px; opacity: 0.5;"></i>
+            <p style="font-size: 1.1rem; font-weight: 500;">등록된 포스트잇 메모가 없습니다.</p>
+            <p style="font-size: 0.9rem; margin-top: 4px;">상단에서 메모를 작성해 붙여보세요!</p>
+          </div>
+        `;
+        return;
+      }
+
+      filteredNotes.forEach((memo) => {
+        const card = document.createElement('div');
+        const colorClass = COLOR_CLASSES[memo.color % 4] || 'postit-yellow';
+        const isCompleted = memo.state === '완료' || memo.state === '체크';
+
+        card.className = `postit-card ${colorClass} ${isCompleted ? 'completed' : ''}`;
+        card.setAttribute('data-datetime', memo.datetime);
+        card.style.setProperty('--rot', memo.rotation || '0deg');
+
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="badge-category">${escapeHtml(memo.category)}</span>
+            <div class="card-actions">
+              <button class="card-btn check-btn" title="${isCompleted ? '완료 취소' : '완료 체크'}" onclick="toggleComplete('${memo.datetime}')">
+                <i class="fa-${isCompleted ? 'solid' : 'regular'} fa-circle-check"></i>
+              </button>
+              <button class="card-btn edit-btn" title="수정" onclick="openEditModal('${memo.datetime}')">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button class="card-btn delete-btn" title="삭제" onclick="deleteNoteItem('${memo.datetime}')">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+          </div>
+          <div class="postit-content">${escapeHtml(memo.content)}</div>
+          <div class="card-footer">
+            <span class="datetime-text">${memo.datetime}</span>
+            <span class="drag-handle-hint" title="드래그하여 이동"><i class="fa-solid fa-grip-vertical"></i></span>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    /* -------------------------------------------------------------
+     * 5. CRUD 핸들러
+     * ------------------------------------------------------------- */
+    // [Create] 메모 추가
+    async function handleAddMemo(e) {
+      if (e) e.preventDefault();
+      const input = document.getElementById('memoInput');
+      const catSelect = document.getElementById('categorySelect');
+      const content = input.value.trim();
+
+      if (!content) {
+        showToast('메모 내용을 입력해주세요!', true);
+        input.focus();
+        return;
+      }
+
+      // 무작위 색상 (0: 노랑, 1: 분홍, 2: 초록, 3: 파랑)
+      const randomColorIndex = Math.floor(Math.random() * 4);
+      const nowStr = formatFullDateTime();
+
+      const newMemo = {
+        timestamp: nowStr,
+        datetime: nowStr,
+        category: catSelect.value,
+        content: content,
+        color: randomColorIndex,
+        state: '진행중',
+        order: notes.length + 1,
+        rotation: getRandomRotation()
+      };
+
+      // 즉시 UI 반영
+      notes.unshift(newMemo);
+      // 순서 번호 재계산
+      notes.forEach((item, idx) => item.order = idx + 1);
+      saveLocalNotes();
+      renderNotes();
+      input.value = '';
+      showToast('포스트잇이 착! 부착되었습니다.');
+
+      // 구글 시트 동기화
+      if (googleWebAppUrl) {
+        syncWithGoogleSheets('create', newMemo).then(res => {
+          if (res && res.success) console.log('Sheet synced successfully');
+        });
+      }
+    }
+
+    // [Delete] 메모 삭제 (즉시 제거)
+    async function deleteNoteItem(datetime) {
+      const idx = notes.findIndex(n => n.datetime === datetime);
+      if (idx === -1) return;
+
+      const deleted = notes.splice(idx, 1)[0];
+      saveLocalNotes();
+      renderNotes();
+      showToast('메모가 삭제되었습니다.');
+
+      // 구글 시트 삭제 연동
+      if (googleWebAppUrl) {
+        syncWithGoogleSheets('delete', { datetime: deleted.datetime });
+      }
+    }
+
+    // [Update] 완료 토글
+    async function toggleComplete(datetime) {
+      const memo = notes.find(n => n.datetime === datetime);
+      if (!memo) return;
+
+      memo.state = (memo.state === '완료' || memo.state === '체크') ? '진행중' : '완료';
+      saveLocalNotes();
+      renderNotes();
+
+      if (googleWebAppUrl) {
+        syncWithGoogleSheets('update', {
+          datetime: memo.datetime,
+          state: memo.state
+        });
+      }
+    }
+
+    // [Update] 메모 수정 모달 열기
+    function openEditModal(datetime) {
+      const memo = notes.find(n => n.datetime === datetime);
+      if (!memo) return;
+
+      document.getElementById('editMemoDatetime').value = memo.datetime;
+      document.getElementById('editCategorySelect').value = memo.category;
+      document.getElementById('editMemoContent').value = memo.content;
+
+      document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.remove('active');
+    }
+
+    // [Update] 메모 수정 저장
+    async function handleSaveEdit() {
+      const dt = document.getElementById('editMemoDatetime').value;
+      const memo = notes.find(n => n.datetime === dt);
+      if (!memo) return;
+
+      const newContent = document.getElementById('editMemoContent').value.trim();
+      const newCat = document.getElementById('editCategorySelect').value;
+
+      if (!newContent) {
+        showToast('내용을 입력해주세요.', true);
+        return;
+      }
+
+      memo.content = newContent;
+      memo.category = newCat;
+      saveLocalNotes();
+      renderNotes();
+      closeEditModal();
+      showToast('메모가 수정되었습니다.');
+
+      if (googleWebAppUrl) {
+        syncWithGoogleSheets('update', {
+          datetime: memo.datetime,
+          content: memo.content,
+          category: memo.category
+        });
+      }
+    }
+
+    /* -------------------------------------------------------------
+     * 6. 드래그 앤 드롭 정렬 (SortableJS - 모바일/터치/반응형 지원)
+     * ------------------------------------------------------------- */
+    function initSortable() {
+      const container = document.getElementById('notesContainer');
+      if (sortableInstance) sortableInstance.destroy();
+
+      sortableInstance = new Sortable(container, {
+        animation: 250,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        delay: 50, // 모바일 스크롤과 터치 분별
+        delayOnTouchOnly: true,
+        onEnd: function (evt) {
+          const cardElements = container.querySelectorAll('.postit-card');
+          const newOrderDatetimes = Array.from(cardElements).map(el => el.getAttribute('data-datetime'));
+          
+          // notes 배열 순서 재정렬
+          const updatedNotes = [];
+          newOrderDatetimes.forEach((dt, index) => {
+            const item = notes.find(n => n.datetime === dt);
+            if (item) {
+              item.order = index + 1;
+              updatedNotes.push(item);
+            }
+          });
+
+          // 필터에 의해 숨겨진 카드들 보존
+          notes.forEach(item => {
+            if (!newOrderDatetimes.includes(item.datetime)) {
+              updatedNotes.push(item);
+            }
+          });
+
+          notes = updatedNotes;
+          saveLocalNotes();
+
+          // 구글 시트 순서 동기화
+          if (googleWebAppUrl) {
+            const orders = notes.map((n, idx) => ({ datetime: n.datetime, order: idx + 1 }));
+            syncWithGoogleSheets('reorder', { orders });
+          }
+        }
+      });
+    }
+
+    /* -------------------------------------------------------------
+     * 7. 다크 모드 / 라이트 모드 전환 (기본: 라이트 모드)
+     * ------------------------------------------------------------- */
+    function initTheme() {
+      const savedTheme = localStorage.getItem('postit_theme') || 'light';
+      applyTheme(savedTheme);
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      const icon = document.getElementById('themeIcon');
+      const text = document.getElementById('themeText');
+      if (theme === 'dark') {
+        icon.className = 'fa-solid fa-sun';
+        text.textContent = '라이트 모드';
+      } else {
+        icon.className = 'fa-solid fa-moon';
+        text.textContent = '다크 모드';
+      }
+      localStorage.setItem('postit_theme', theme);
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+    }
+
+    /* -------------------------------------------------------------
+     * 8. 이벤트 리스너 등록
+     * ------------------------------------------------------------- */
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+
+      // .env.local 환경 변수 로드 및 초기 데이터 fetch
+      loadConfigEnv();
+
+      // 메모 폼 제출
+      document.getElementById('memoForm').addEventListener('submit', handleAddMemo);
+
+      // Ctrl + Enter로 작성 편의 기능
+      document.getElementById('memoInput').addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          handleAddMemo(e);
+        }
+      });
+
+      // 테마 토글
+      document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
+
+      // 카테고리 필터링 드롭다운
+      document.getElementById('filterCategorySelect').addEventListener('change', (e) => {
+        filterCategory = e.target.value;
+        renderNotes();
+      });
+
+      // 새로고침 버튼
+      document.getElementById('btnRefresh').addEventListener('click', () => {
+        showToast('메모를 새로고침합니다.');
+        fetchAllNotes();
+      });
+
+      // 수정 모달 이벤트
+      document.getElementById('closeEditModal').addEventListener('click', closeEditModal);
+      document.getElementById('cancelEditBtn').addEventListener('click', closeEditModal);
+      document.getElementById('saveEditBtn').addEventListener('click', handleSaveEdit);
+
+      // 시트 설정 모달 이벤트
+      const sheetModal = document.getElementById('sheetModal');
+      document.getElementById('btnOpenSheetModal').addEventListener('click', () => {
+        sheetModal.classList.add('active');
+      });
+      document.getElementById('closeSheetModal').addEventListener('click', () => {
+        sheetModal.classList.remove('active');
+      });
+      document.getElementById('btnSaveSheetUrl').addEventListener('click', () => {
+        googleWebAppUrl = document.getElementById('webAppUrlInput').value.trim();
+        localStorage.setItem('postit_sheet_url', googleWebAppUrl);
+        sheetModal.classList.remove('active');
+        showToast('구글 시트 연동 URL이 저장되었습니다.');
+        fetchAllNotes();
+      });
+      document.getElementById('btnTestSheet').addEventListener('click', async () => {
+        const testUrl = document.getElementById('webAppUrlInput').value.trim();
+        if (!testUrl) {
+          showToast('URL을 입력해주세요.', true);
+          return;
+        }
+        showToast('구글 시트 연결을 테스트 중입니다...');
+        try {
+          const res = await fetch(`${testUrl}?action=read`);
+          const data = await res.json();
+          if (data && data.success) {
+            showToast('성공! 구글 시트와 정상 연결되었습니다.');
+          } else {
+            showToast('응답 오류: 시트 스크립트를 확인하세요.', true);
+          }
+        } catch (err) {
+          showToast('연결 실패: URL 또는 배포 권한을 확인하세요.', true);
+        }
+      });
+
+      // 초기 SortableJS 초기화
+      initSortable();
+    });
+  </script>
+</body>
+</html>

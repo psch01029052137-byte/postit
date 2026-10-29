@@ -1,0 +1,12 @@
+{
+  "name": "postit-todolist",
+  "version": "1.0.0",
+  "description": "Post-it Todo List with Google Sheets integration",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
